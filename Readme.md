@@ -1,4 +1,5 @@
-#BoneMeasurement#
+BoneMeasurement
+===============
 
 Computes, combines and plots long bone end point measurements from
 2D DXA scan images with a single Python script.
