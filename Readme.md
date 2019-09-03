@@ -61,8 +61,3 @@ This software relies on:
 - _Woolz_ image processing - https://github.com/billhill00/Woolz
 - _PyWoolz_ Python binding to Woolz - https://github.com/billhill00/PyWoolz
 
-Example plot (excluding head):
-
-![eample plot][exp]
-
-[exp]: example_plot.png
