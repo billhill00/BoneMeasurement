@@ -50,6 +50,18 @@ libc = c.CDLL("libc.so.6")
 
 libc.fopen.restype = c.POINTER(w.FILE)
 
+wlz_rgba_channel = {
+  'red':        '-C 1',
+  'green':      '-C 2',
+  'blue':       '-C 3',
+  'hue':        '-C 4',
+  'saturation': '-C 5',
+  'brightness': '-C 6',
+  'cyan':       '-C 7',
+  'magenta':    '-C 8',
+  'yellow':     '-C 9',
+  'modulus':    '-m'}
+
 #======================================================================#
 
 prog            = 'bonemeasurement.py'
@@ -322,14 +334,14 @@ def readJsnFile(filename): #{
 #}
 
 def getPixelSz(assay, scan_dir, fmt): #{
-  pix_sz = [-1.0, -1.0]
+  pix_sz = [1.0, 1.0]
   if(fmt == 'dcm'): #{
     file_path = scan_dir + '/' + assay + '.' + fmt
     img = pydicom.read_file(file_path)
     pix_sz[0] = float(img.ExposedArea[0]) / float(img.Columns)
     pix_sz[1] = float(img.ExposedArea[1]) / float(img.Rows)
   #}
-  return pix_sz
+  return pix_sz237
 #}
 
 def meanSurroundValue(obj_tst, obj_ref): #{
@@ -379,11 +391,12 @@ def fillBackground(tmp_file, in_idx, out_idx): #{
   # Threshold to get regions of background, but these will also include
   # some dense bone foreground.
   if(not bool(err_num)): #{
-    vrbMsg(5, 'fillBackground() thresholding object read from = ' + in_obj_file)
     hilo = w.WLZ_THRESH_HIGH
     tv = w.WlzPixelV()
     tv = c.c_int(min_bgd_value)
     err_num = c.c_int(w.WLZ_ERR_NONE)
+    vrbMsg(5, 'fillBackground() thresholding object read from = ' + 
+        in_obj_file + ' at value ' + str(min_bgd_value))
     thr_obj = w.WlzAssignObject(
         w.WlzThresholdI(in_obj, tv, hilo, c.byref(err_num)), None)
     if(bool(err_num)): #{
@@ -1618,8 +1631,33 @@ def processImage(model, image, fmt): #{
         '-o ' + tmp_file + '0.wlz ' +
         tmp_file + '0.tif')
   #}
+  # Check Woolz image grey type, if required convert from colour
+  status,stats = runCmd('WlzGreyStats ' + tmp_file + '0.wlz ')
+  if(status == 0): #{
+    gType = stats.split(' ')[1]
+    if(gType == 'WLZ_GREY_RGBA'): #{
+      status,dummy = runCmd('WlzRGBAConvert ' +
+          wlz_rgba_channel[args.colour_channel] + ' ' +
+          tmp_file + '0.wlz > ' + tmp_file + '1.wlz')
+      if(status == 0): #{
+        status,dummy = runCmd('mv ' + tmp_file + '1.wlz ' + tmp_file + '0.wlz')
+      #}
+    #}
+  #}
+  # Make sure the image is a normalised unsigned byte image
+  if(status == 0): #{
+    status,dummy = runCmd('WlzGreyNormalise -u ' + 
+        tmp_file + '0.wlz > ' + tmp_file + '1.wlz')
+    if(status == 0): #{
+      status,dummy = runCmd('mv ' + tmp_file + '1.wlz ' + tmp_file + '0.wlz')
+    #}
+  #}
   # Fill background of image with black rather than white
-  status = fillBackground(tmp_file, 0, 1)
+  if(args.background_valid): #{
+    status,dummy = runCmd('mv ' + tmp_file + '0.wlz ' + tmp_file + '1.wlz')
+  else: #}{
+    status = fillBackground(tmp_file, 0, 1)
+  #}
   # Move the filled image to the working directory.
   status,dummy = runCmd('mv ' + tmp_file + '1.wlz ' + bfi_file + '.wlz')
   if(status == 0): #{
@@ -2396,7 +2434,7 @@ def ParseArgs(): #{
   measurements may then also be plotted and combined.''')
   parser.add_argument('-f', '--file-format', 
       type=str, default=def_format,
-      help='Input model/assay file format, eg: dcm, tif, ....')
+      help='Input model/assay file format, eg: dcm, jpg, tif, ....')
   parser.add_argument('-d', '--debug', 
       type=int, default=0,
       help='For debuging only. Setting this may give incorrect measurements' +
@@ -2439,6 +2477,13 @@ def ParseArgs(): #{
       type=str, default='', 
       help='Filebase for plots, default is plots not saved but shown ' +
           ' using matplotlib.pyplot.show().')
+  parser.add_argument('-a', '--colour-channel',
+      type=str, default='modulus',
+      help='Colour channel to use if input model/assay is colour. ' +
+          'Options are: ' + str(wlz_rgba_channel.keys()) + '.')
+  parser.add_argument('-b', '--background-valid',
+      action='store_true', default=False,
+      help='Assays have valid background.')
   parser.add_argument('-m', '--model', 
       type=str, default=def_model, 
       help='Target model for the assays.')
@@ -2487,6 +2532,11 @@ def ParseArgs(): #{
   #}
   if(args.combine_measurements and args.map_measurements): #{
     errMsg('Measurements can either be mapped of combined but not both.')
+    status = 1
+  #}
+  if(not (args.colour_channel in wlz_rgba_channel)): #{
+    errMsg('Colour channel invalid, valid channels are: ' +
+        str(wlz_rgba_channel.keys()) + '.')
     status = 1
   #}
   assaylist = []
