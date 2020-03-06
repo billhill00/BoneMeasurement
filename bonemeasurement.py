@@ -341,7 +341,7 @@ def getPixelSz(assay, scan_dir, fmt): #{
     pix_sz[0] = float(img.ExposedArea[0]) / float(img.Columns)
     pix_sz[1] = float(img.ExposedArea[1]) / float(img.Rows)
   #}
-  return pix_sz237
+  return pix_sz
 #}
 
 def meanSurroundValue(obj_tst, obj_ref): #{
