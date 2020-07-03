@@ -75,7 +75,7 @@ vrb_level       = 0                 # Level of verbosity, 0 = none, 9 = most
 def_model       = '1848871'         # base file name of the model
 def_format      = 'dcm'             # default image format
 img_size_min    = 64                # minimum size of image
-roi_obj_size    = 200               # size of roi images
+roi_obj_size    = 160               # size of roi images
 min_bgd_area    = 180               # Minimum area for filling in background
 min_bgd_value   = 250               # Minimum value for removing background
 min_cnf_value   = 0.55              # Default minimum confidence value
@@ -115,7 +115,7 @@ prm_hip_e       = 0.15              # Fraction of body length from
                                     # base of spine at which to end searching
                                     # for hips
 # Elbow region search is based on fractions of head - neck distance
-prm_elbow_i     = 0.20              # Length down arm from shoulder where
+prm_elbow_i     = 0.35              # Length down arm from shoulder where
                                     # arm tracking begins - discontinuities
                                     # are checked from here down
 prm_elbow_s     = 0.60              # Length down arm from shoulder where
