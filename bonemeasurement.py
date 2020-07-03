@@ -438,6 +438,8 @@ def fillBackground(tmp_file, in_idx, out_idx): #{
     #}
     n_selected = idx0
     # Form the union of the selected regions
+    vrbMsg(5, 'fillBackground() forming union of ' + str(n_selected) + 
+        ' selected regions')
     err_num = c.c_int(w.WLZ_ERR_NONE)
     rgn_obj = w.WlzAssignObject(
         w.WlzUnionN(n_selected, lbl_ary, 0, c.byref(err_num)), None)
@@ -445,7 +447,10 @@ def fillBackground(tmp_file, in_idx, out_idx): #{
       dummy = w.WlzFreeObj(lbl_ary[idx0])
     #}
     w.AlcFree(lbl_ary)
+    vrbMsg(9, 'fillBackground() union of selected regions rgn_obj = ' +
+        str(rgn_obj) + ',errNum = ' + str(err_num))
     if(not bool(err_num)): #{
+      vrbMsg(5, 'fillBackground() masking regions')
       # Set value 0 using mask union of selected regions
       out_obj = w.WlzAssignObject(
           w.WlzGreyMaskI(in_obj, rgn_obj, 0, c.byref(err_num)), None)
@@ -1685,7 +1690,7 @@ def processImage(model, image, fmt): #{
   if(status == 0): #{
     status, dummy = runCmd('WlzSepFilterObj -g u -m ' +
         str(prm_peak_sigma) + ',' + str(prm_peak_sigma) + ' -Pe -t x,y ' +
-        '-o ' + smt_file + '.wlz ' + bfi_file + '.wlz')
+        bfi_file + '.wlz | WlzGreyNormalise -u > ' + smt_file + '.wlz')
   #}
   # Find ROI centres
   if(status == 0): #{
