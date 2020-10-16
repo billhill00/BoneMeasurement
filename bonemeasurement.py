@@ -134,6 +134,8 @@ prm_knee_s     = 0.60               # Length down arm from shoulder where
                                     # search for knee begins
 prm_knee_e     = 1.20               # Length down arm from shoulder where
                                     # search for knee ends
+# Ankles
+prm_ankle_heel = True
 
 #======================================================================#
 # Debug stuff
@@ -1169,18 +1171,23 @@ def findProfileKnee(rois, ary): #{
 
 def findProfileAnkle(rois, ary): #{
   # Have found at least one hip and the corresponding knee, the centre of
-  # the neck and pelvis. # Find angles by tracking down the legs from the
-  # knees looking for the minimum height peak that's between 1/2 and 1/1
-  # of the upper leg length down from the knee.
+  # the neck and pelvis. # Find ankles by tracking down the legs from the
+  # knees looking for the minimum height trough that's between 1/2 and 1/1
+  # of the upper leg length down from the knee. Then (optionaly) tracking
+  # further to find the highest peak between the lowest trough (now found)
+  # and the toes.
   vrbMsg(3, 'findProfileAnkle()')
   if(bool(rois['hip_l']) and bool(rois['hip_r']) and
      (bool(rois['knee_l']) or bool(rois['knee_r']))): #{
+    hyst_dn = 0
+    hyst_up = 0
     knee_min = 0
     up_leg_len = [0, 0]
     knee_s = [None, None]
     ankle_e = [None, None]
     leg_pkp = [None, None]
     leg_min = [None, None]
+    leg_max = [None, None]
     discon  = [False, False]
     finished = [False, False]
     if(bool(rois['knee_r']) and bool(rois['hip_r'])): #{
@@ -1232,15 +1239,22 @@ def findProfileAnkle(rois, ary): #{
             d1 = dist(knee_s[i], leg_pkp[i])
             vrbMsg(5, 'findProfileAnkle() leg ' + str(i) +
                 ' d1 ' + str(d1) + ' leg_len ' + str(up_leg_len[i]))
-            if(d1 > up_leg_len[i]): #{
+            if(d1 > up_leg_len[i] * 1.1): #{
               finished[i] = True
             elif(d1 > up_leg_len[i] * 0.5): #}{
               if(leg_min[i] is None): #{
+                hyst_dn = 0
+                hyst_up = 0
                 leg_min[i] = [leg_pkp[i][0], leg_pkp[i][1],  x[leg_pkp[i][0]]]
+                leg_max[i] = [leg_pkp[i][0], leg_pkp[i][1],  x[leg_pkp[i][0]]]
               else: #}{
                 m = x[leg_pkp[i][0]]
                 if(m < leg_min[i][2]): #{
+                  hyst_dn = hyst_dn + 1
                   leg_min[i] = [leg_pkp[i][0], leg_pkp[i][1], m]
+                elif((hyst_dn > 5) and (m > leg_max[i][2])): #}{
+                  hyst_up = hyst_up + 1
+                  leg_max[i] = [leg_pkp[i][0], leg_pkp[i][1], m]
                 #}
               #}
             #}
@@ -1252,13 +1266,20 @@ def findProfileAnkle(rois, ary): #{
         #}
       #}
       vrbMsg(5, 'findProfileAnkle() ln = ' + str(ln) +
-          ' leg_min = ' + str(leg_min))
+          ' leg_min = ' + str(leg_min) +
+          ' leg_max = ' + str(leg_max))
     #}
-    if((not discon[0]) and (not (leg_min[0] is None))): #{
-      rois['ankle_r'] = leg_min[0][:2]
+    if(not discon[0]): #{
+      lm = leg_max if prm_ankle_heel else leg_min
+      if(not (lm[0] is None)): #{
+        rois['ankle_r'] = lm[0][:2]
+      #}
     #}
-    if((not discon[1]) and (not (leg_min[1] is None))): #{
-      rois['ankle_l'] = leg_min[1][:2]
+    if(not discon[1]): #{
+      lm = leg_max if prm_ankle_heel else leg_min
+      if(not (lm[1] is None)): #{
+        rois['ankle_l'] = lm[0][:2]
+      #}
     #}
   #}  
   vrbMsg(3, 'findProfileAnkle( rois[\'ankle_l\'] = ' + str(rois['ankle_l']))
